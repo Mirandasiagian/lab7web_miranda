@@ -1,0 +1,31 @@
+a:3:{s:4:"time";i:1749429113;s:3:"ttl";i:60;s:4:"data";s:1064:"<!-- DEBUG-VIEW START 1 APPPATH\Views\template\admin_header.php -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Daftar Artikel</title>
+    <link rel="stylesheet" href="http://localhost:8080/lab7web/ci4/public/style.css">
+</head>
+<body>
+    <div id="container">
+    <header>
+        <h1>Admin Portal Berita</h1>
+    </header>
+    <nav>
+        <a href="http://localhost:8080/lab7web/ci4/public/admin/artikel" class="active">Dashboard</a>
+        <a href="http://localhost:8080/lab7web/ci4/public/admin/artikel/add">Tambah Artikel</a>
+        <a href="http://localhost:8080/lab7web/ci4/public/artikel">Portal Berita</a>
+        <a href="http://localhost:8080/lab7web/ci4/public/user/logout" style="float: right;">Logout</a>
+    </nav>
+    <section id="wrapper">
+        <section id="main">
+        </section>
+        <aside id="sidebar">
+            <!-- Sidebar content -->
+        </aside>
+    </section>
+    </div>
+</body>
+</html>
+<!-- DEBUG-VIEW ENDED 1 APPPATH\Views\template\admin_header.php -->
+";}

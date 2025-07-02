@@ -48,4 +48,9 @@ $session->setFlashdata("flash_msg", "email tidak terdaftar.");
 return redirect()->to('/user/login');
 }
 }
+public function logout()
+{
+    session()->destroy();
+    return redirect()->to('/user/login');
+}
 }

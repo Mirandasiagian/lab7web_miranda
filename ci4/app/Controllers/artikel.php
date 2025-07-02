@@ -3,6 +3,8 @@
 namespace App\Controllers;
 
 use App\Models\ArtikelModel;
+use App\Models\KategoriModel; 
+use CodeIgniter\Exceptions\PageNotFoundException;
 
 class Artikel extends BaseController
 {
@@ -17,6 +19,11 @@ class Artikel extends BaseController
     public function view($slug)
     {
         $model = new ArtikelModel();
+        $data['artikel'] = $model->where('slug', $slug)->first();
+        if (empty($data['artikel'])) {
+            throw new \CodeIgniter\Exceptions\PageNotFoundException('Cannot find the article.');
+        }
+        $data['title'] = $data['artikel']['judul'];
         $artikel = $model->where('slug', $slug)->first();
         
         // Jika artikel tidak ditemukan, tampilkan 404
@@ -30,12 +37,20 @@ class Artikel extends BaseController
 
     public function admin_index()
 {
-    $title = 'Daftar Artikel';
+    $title = 'Daftar Artikel (Admin)';
     $q = $this->request->getVar('q') ?? '';
     $kategori = $this->request->getVar('kategori') ?? '';
     
     $model = new ArtikelModel();
     $query = $model;
+
+    // get search keyword 
+    $q = $this->request->getVar('q') ?? '' ;
+
+    // get category filter 
+    $kategori_id = $this->request->getVar('kategori_id') ?? '' ;
+    $page = $this->request->getVar('page') ?? 1;
+
     
     if ($q) {
         $query = $query->like('judul', $q);
@@ -46,44 +61,94 @@ class Artikel extends BaseController
     }
     
     $data = [
-        'title'     => $title,
-        'q'         => $q,
-        'kategori'  => $kategori,
-        'artikel'   => $query->paginate(10),
-        'pager'     => $model->pager,
-        'kategoris' => $model->distinct()->select('kategori')->findAll()
+        'title'       => $title,
+        'q'           => $q,
+        'id_kategori' => $kategori_id,
+        'artikel'     => $query->paginate(10), #data dibatasi 10 record per halaman 
+        'pager'       => $model->pager,
+        'kategoris'   => $model->distinct()->select('kategori')->findAll()
     ];
     
-    return view('artikel/admin_index', $data);
+    // Building the query 
+    $builder = $model->table('artikel')
+        ->select('artikel.*, kategori.nama_kategori')
+                 ->join('kategori', 'kategori.id_kategori = artikel.id_kategori'); 
+    // Apply search filter if keyword is provided
+    if ($q != '') {
+        $builder->like('artikel.judul', $q);
+}
+// Apply category filter if category_id is provided
+if ($kategori_id != '') {
+    $builder->where('artikel.id_kategori', $kategori_id);
 }
 
+
+// Apply pagination
+$data['artikel'] = $builder->paginate(10);
+$data['pager'] = $model->pager;
+
+// Fetch all categories for the filter dropdown
+$kategoriModel = new KategoriModel();
+$data['kategori'] = $kategoriModel->findAll();
+
+    return view('artikel/admin_index', $data);
+
+    if ($this->request->isAJAX()) {
+return $this->response->setJSON($data);
+} else {
+$kategoriModel = new KategoriModel();
+$data['kategori'] = $kategoriModel->findAll();
+return view('artikel/admin_index', $data);
+}
+
+}
+
+// ... (methods add, edit, delete remain largely the same , but update to handle id_kategori)
 public function add()
 {
-// validasi data.
-$validation = \Config\Services::validation();
-$validation->setRules(['judul' => 'required']);
-$isDataValid = $validation->withRequest($this->request)->run();
-
-if ($isDataValid)
-{
-$file = $this->request->getFile('gambar');
-$file->move(ROOTPATH . 'public/gambar');
-
-$artikel = new ArtikelModel();
-$artikel->insert([
-'judul' => $this->request->getPost('judul'), 'isi'	=> $this->request->getPost('isi'),
-'slug'	=> url_title($this->request->getPost('judul')), 'gambar' => $file->getName(),
+// Validation...
+if ($this->request->getMethod() == 'post' && $this->validate([
+        'judul' => 'required',
+        'id_kategori' => 'required|integer' // Ensure id_kategori is required and an integer
+])) {
+        $model = new ArtikelModel();
+        $model->insert([
+            'judul' => $this->request->getPost('judul'),
+            'isi' => $this->request->getPost('isi'),
+            'slug' => url_title($this->request->getPost('judul')),
+            'id_kategori' => $this->request->getPost('id_kategori')
 ]);
-return redirect('admin/artikel');
-}
-$title = "Tambah Artikel";
-return view('artikel/form_add', compact('title'));
-}
+        return redirect()->to('/admin/artikel');
+} else {
+    $kategoriModel = new KategoriModel();
+    $data['kategori'] = $kategoriModel->findAll(); // Fetch categoriesfor the form
 
+        $data['title'] = "Tambah Artikel";return view('artikel/form_add', $data);
+
+}
+}
 
     public function edit($id = null)
     {
         $model = new ArtikelModel();
+        if ($this->request->getMethod() == 'post' && $this->validate([
+            'judul' => 'required',
+            'id_kategori' => 'required|integer'
+        ])) {
+            $model->update($id, [
+                'judul' => $this->request->getPost('judul'),
+                'isi' => $this->request->getPost('isi'),
+                'id_kategori' => $this->request->getPost('id_kategori')
+            ]);
+            return redirect()->to('/admin/artikel');
+        } else {
+            $data['artikel'] = $model->find($id);
+            $kategoriModel = new KategoriModel();
+            $data['kategori'] = $kategoriModel->findAll(); // Fetch categories for the form
+            $data['title'] = "Edit Artikel";
+            return view('artikel/form_edit', $data); 
+        }
+
         $artikel = $model->where('id', $id)->first();
         
         if (!$artikel) {
@@ -140,5 +205,13 @@ return view('artikel/form_add', compact('title'));
         
         $model->delete($id);
         return redirect()->to('/admin/artikel');
-    }
+    }   
+
+    public function data()
+{
+    $model = new ArtikelModel();
+    $data = $model->findAll();
+    return $this->response->setJSON($data);
+}
+
 }
